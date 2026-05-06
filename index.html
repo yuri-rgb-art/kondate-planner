@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>献立プランナー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #6b6b65;
+    --text3: #a0a09a;
+    --teal: #1D9E75; --teal-bg: #E1F5EE; --teal-text: #085041;
+    --amber: #EF9F27; --amber-bg: #FAEEDA; --amber-text: #633806;
+    --red: #E24B4A; --red-bg: #FCEBEB; --red-text: #791F1F;
+    --blue: #378ADD; --blue-bg: #E6F1FB; --blue-text: #0C447C;
+    --purple-bg: #EEEDFE; --purple-text: #3C3489;
+    --coral-bg: #FAECE7; --coral-text: #712B13;
+    --green-bg: #EAF3DE; --green-text: #27500A;
+    --radius: 10px; --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .app-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .app-title span { color: var(--teal); }
+
+  /* ===== TAB NAV ===== */
+  .tab-nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 56px;
+    z-index: 99;
+  }
+  .tab-nav-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-nav-inner::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 14px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--teal); }
+
+  /* ===== MAIN ===== */
+  .main { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .card-title-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0;
+  }
+
+  /* ===== WEEK GRID ===== */
+  .week-wrap {
+    display: grid;
+    grid-template-columns: 30px repeat(7, minmax(0,1fr));
+    gap: 5px;
+  }
+  .day-lbl { font-size: 11px; color: var(--text2); text-align: center; padding: 4px 0; font-weight: 500; }
+  .row-lbl { font-size: 11px; color: var(--text2); display: flex; align-items: center; justify-content: center; min-height: 54px; font-weight: 500; }
+  .meal-cell {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 3px;
+    font-size: 10px;
+    min-height: 54px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.4;
+    transition: all 0.15s;
+  }
+  .meal-cell:hover { border-color: var(--border2); background: #e8e7e1; }
+  .meal-cell.empty { color: var(--text3); font-size: 18px; }
+  .meal-cell.selected { border: 2px solid var(--teal); background: var(--teal-bg); }
+
+  /* ===== FRIDGE ===== */
+  .fridge-add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .fridge-input {
+    flex: 1;
+    font-size: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .fridge-input:focus { border-color: var(--teal); background: #fff; }
+  .qty-sel {
+    font-size: 13px;
+    padding: 0 10px;
+    width: 110px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+  }
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary {
+    background: var(--teal);
+    color: #fff;
+    border-color: var(--teal);
+  }
+  .btn-primary:hover { background: #1a8c67; }
+
+  .level-block {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .level-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .level-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .level-title { font-size: 13px; font-weight: 700; }
+  .level-sub { font-size: 11px; color: var(--text2); }
+  .level-count { font-size: 11px; color: var(--text2); margin-left: auto; }
+  .ingredient-list { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .ingredient-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+  .ingredient-row.prio-on { border-color: var(--teal); background: var(--teal-bg); }
+  .ingredient-name { flex: 1; font-size: 13px; }
+  .prio-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--border2);
+    border-radius: 99px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .prio-btn.on { background: var(--teal-bg); color: var(--teal-text); border-color: var(--teal); }
+  .prio-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); }
+  .prio-btn.on .prio-dot { background: var(--teal); }
+  .move-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+  }
+  .move-btn:hover { background: var(--surface2); }
+  .del-btn {
+    padding: 4px 8px;
+    font-size: 15px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .del-btn:hover { color: var(--text); }
+  .empty-hint { font-size: 12px; color: var(--text3); padding: 8px 10px; }
+
+  /* ===== FILTER PILLS ===== */
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pill {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--border2);
+    border-radius: 99px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pill.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .pill-wa.active { background: var(--teal-bg); color: var(--teal-text); border-color: var(--teal); }
+  .pill-yo.active { background: var(--blue-bg); color: var(--blue-text); border-color: var(--blue); }
+  .pill-ch.active { background: var(--coral-bg); color: var(--coral-text); border-color: #D85A30; }
+
+  .cond-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .cond-item label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; }
+  .cond-item select, .cond-item input {
+    width: 100%;
+    font-size: 13px;
+    padding: 9px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+  }
+  .cond-item select:focus, .cond-item input:focus { border-color: var(--teal); }
+
+  .gen-btn {
+    width: 100%;
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .gen-btn:hover { background: #1a8c67; }
+
+  /* ===== SUGGESTION CARDS ===== */
+  .sug-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .sug-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sug-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .sug-name { font-size: 15px; font-weight: 700; }
+  .sug-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .sug-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .stag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+  .stag-wa { background: var(--teal-bg); color: var(--teal-text); }
+  .stag-yo { background: var(--blue-bg); color: var(--blue-text); }
+  .stag-ch { background: var(--coral-bg); color: var(--coral-text); }
+  .stag-mood { background: var(--purple-bg); color: var(--purple-text); }
+  .stag-prio { background: var(--teal-bg); color: var(--teal-text); }
+  .stag-have { background: var(--surface2); color: var(--text2); }
+  .stag-need { background: var(--red-bg); color: var(--red-text); }
+  .sug-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .recipe-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--border2);
+    border-radius: 99px;
+    text-decoration: none;
+    color: var(--text2);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .recipe-link:hover { background: var(--surface); border-color: var(--teal); color: var(--teal-text); }
+  .recipe-link .site-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+  .add-to-plan-btn {
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    border: 1px solid var(--teal);
+    border-radius: 99px;
+    background: var(--teal-bg);
+    color: var(--teal-text);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+  .add-to-plan-btn:hover { background: var(--teal); color: #fff; }
+
+  /* ===== FAV ===== */
+  .fav-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .fav-name { font-size: 14px; font-weight: 700; }
+  .fav-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  /* ===== NUTRITION ===== */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .stat-lbl { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .stat-val { font-size: 24px; font-weight: 700; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .nutr-row { margin-bottom: 12px; }
+  .nutr-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+  .bar-track { height: 7px; background: var(--surface2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { height: 100%; border-radius: 99px; }
+
+  /* ===== SHOPPING ===== */
+  .shop-cat { margin-bottom: 16px; }
+  .shop-cat-lbl { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .shop-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .shop-item:last-child { border-bottom: none; }
+  .shop-chk {
+    width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--border2);
+    cursor: pointer; flex-shrink: 0; appearance: none; -webkit-appearance: none;
+    position: relative; background: transparent; transition: all 0.15s;
+  }
+  .shop-chk:checked { background: var(--teal); border-color: var(--teal); }
+  .shop-chk:checked::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 5px; height: 9px;
+    border: 2px solid #fff; border-top: none; border-left: none;
+    transform: rotate(45deg);
+  }
+  .shop-item label { font-size: 13px; flex: 1; cursor: pointer; }
+  .shop-item .qty { font-size: 12px; color: var(--text2); }
+
+  /* ===== LOADING ===== */
+  .loading { text-align: center; padding: 2.5rem; color: var(--text2); }
+  .dots { display: inline-flex; gap: 5px; }
+  .dots span { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; animation: bop 1.2s infinite; }
+  .dots span:nth-child(2) { animation-delay: .2s; }
+  .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bop { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1a1a18; color: #fff; padding: 10px 20px;
+    border-radius: var(--radius); font-size: 13px;
+    opacity: 0; transition: opacity 0.25s; pointer-events: none;
+    white-space: nowrap; z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+
+  .hint { font-size: 11px; color: var(--text3); margin-top: 8px; }
+  .section-sub { font-size: 12px; color: var(--text2); margin-bottom: 12px; }
+
+  /* APIキーモーダル */
+  .api-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .api-overlay.hidden { display: none; }
+  .api-modal {
+    background: var(--surface); border-radius: var(--radius-lg);
+    padding: 28px 24px; max-width: 440px; width: 100%;
+    border: 1px solid var(--border);
+  }
+  .api-modal-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .api-modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+  .api-modal-sub a { color: var(--teal); text-decoration: none; }
+  .api-modal-sub a:hover { text-decoration: underline; }
+  .api-key-wrap { position: relative; margin-bottom: 10px; }
+  .api-key-input {
+    width: 100%; font-size: 13px; padding: 11px 44px 11px 14px;
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--surface2); color: var(--text); outline: none;
+  }
+  .api-key-input:focus { border-color: var(--teal); background: #fff; }
+  .api-toggle-vis {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text2); padding: 0;
+  }
+  .api-error { font-size: 12px; color: var(--red-text); margin-bottom: 12px; display: none; }
+  .api-error.show { display: block; }
+  .api-note {
+    font-size: 11px; color: var(--text3); margin-top: 12px;
+    padding: 10px 12px; background: var(--surface2); border-radius: 8px; line-height: 1.6;
+  }
+  /* ヘッダーのAPIキー状態 */
+  .api-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; cursor: pointer; padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 99px; background: var(--surface2);
+    transition: all 0.15s;
+  }
+  .api-status:hover { background: var(--surface); border-color: var(--border2); }
+  .api-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .api-status-dot.connected { background: var(--teal); }
+
+  @media (max-width: 480px) {
+    .fridge-add-row { flex-wrap: wrap; }
+    .fridge-input { min-width: 0; }
+    .cond-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- APIキーモーダル -->
+<div class="api-overlay hidden" id="api-overlay">
+  <div class="api-modal">
+    <div class="api-modal-title">APIキーを設定</div>
+    <div class="api-modal-sub">
+      AI提案機能を使うにはGoogle Gemini APIキーが必要です。<br>
+      <a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a> でAPIキーを取得してください。<br>
+      Googleアカウントのみで取得でき、無料枠で使えます。
+    </div>
+    <div class="api-key-wrap">
+      <input class="api-key-input" type="password" id="api-key-input" placeholder="AIza..." />
+      <button class="api-toggle-vis" onclick="toggleVis()" id="vis-btn">&#128065;</button>
+    </div>
+    <div class="api-error" id="api-error">APIキーの形式が正しくありません（AIza から始まる文字列です）</div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px;" onclick="saveApiKey()">保存して使いはじめる</button>
+    <div class="api-note">
+      &#9888; このキーはブラウザのlocalStorageに保存されます。個人のPCでのみご使用ください。他人と共有するPCには保存しないことをおすすめします。
+    </div>
+    <button id="api-cancel-btn" class="btn" style="width:100%;margin-top:10px;display:none;" onclick="closeApiModal()">キャンセル</button>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="app-title">献立<span>プランナー</span></div>
+    <button class="api-status" onclick="openApiModal()" id="api-status-btn">
+      <span class="api-status-dot" id="api-status-dot"></span>
+      <span id="api-status-text">APIキー未設定</span>
+    </button>
+  </div>
+</div>
+
+<div class="tab-nav">
+  <div class="tab-nav-inner">
+    <button class="tab-btn active" onclick="sw('plan')">献立表</button>
+    <button class="tab-btn" onclick="sw('suggest')">AI提案</button>
+    <button class="tab-btn" onclick="sw('favorites')">お気に入り</button>
+    <button class="tab-btn" onclick="sw('nutrition')">栄養・予算</button>
+    <button class="tab-btn" onclick="sw('shopping')">買い物リスト</button>
+  </div>
+</div>
+
+<div class="main">
+<div id="toast" class="toast"></div>
+
+<!-- 献立表 -->
+<div class="section active" id="section-plan">
+  <div class="card">
+    <div class="card-title"><span class="card-title-dot"></span>今週の献立</div>
+    <div class="week-wrap">
+      <div></div>
+      <div class="day-lbl">月</div><div class="day-lbl">火</div><div class="day-lbl">水</div>
+      <div class="day-lbl">木</div><div class="day-lbl">金</div><div class="day-lbl">土</div><div class="day-lbl">日</div>
+      <div class="row-lbl">昼</div>
+      <div id="c-l0" class="meal-cell empty" onclick="sel(this,'l',0)">＋</div>
+      <div id="c-l1" class="meal-cell empty" onclick="sel(this,'l',1)">＋</div>
+      <div id="c-l2" class="meal-cell" onclick="sel(this,'l',2)">チキン南蛮</div>
+      <div id="c-l3" class="meal-cell" onclick="sel(this,'l',3)">豚しゃぶ</div>
+      <div id="c-l4" class="meal-cell empty" onclick="sel(this,'l',4)">＋</div>
+      <div id="c-l5" class="meal-cell" onclick="sel(this,'l',5)">カレーライス</div>
+      <div id="c-l6" class="meal-cell empty" onclick="sel(this,'l',6)">＋</div>
+      <div class="row-lbl">夜</div>
+      <div id="c-d0" class="meal-cell" onclick="sel(this,'d',0)">鮭の塩焼き</div>
+      <div id="c-d1" class="meal-cell empty" onclick="sel(this,'d',1)">＋</div>
+      <div id="c-d2" class="meal-cell" onclick="sel(this,'d',2)">麻婆豆腐</div>
+      <div id="c-d3" class="meal-cell empty" onclick="sel(this,'d',3)">＋</div>
+      <div id="c-d4" class="meal-cell" onclick="sel(this,'d',4)">唐揚げ</div>
+      <div id="c-d5" class="meal-cell" onclick="sel(this,'d',5)">焼き魚定食</div>
+      <div id="c-d6" class="meal-cell empty" onclick="sel(this,'d',6)">＋</div>
+    </div>
+    <p class="hint">セルをタップして選択 → AI提案タブでメニューを追加</p>
+  </div>
+</div>
+
+<!-- AI提案 -->
+<div class="section" id="section-suggest">
+  <div class="card">
+    <div class="card-title"><span class="card-title-dot"></span>冷蔵庫の食材</div>
+    <div class="fridge-add-row">
+      <input class="fridge-input" type="text" id="fridge-input" placeholder="食材名（例：鶏むね肉、豆腐…）" onkeydown="if(event.key==='Enter')addFridge()" />
+      <select id="qty-sel" class="qty-sel">
+        <option value="high">たっぷり</option>
+        <option value="mid" selected>ふつう</option>
+        <option value="low">少し</option>
+      </select>
+      <button class="btn" onclick="addFridge()">追加</button>
+    </div>
+
+    <div class="level-block">
+      <div class="level-header">
+        <div class="level-dot" style="background:#E24B4A;"></div>
+        <span class="level-title" style="color:#A32D2D;">少し</span>
+        <span class="level-sub">残り少ない食材</span>
+        <span class="level-count" id="cnt-low"></span>
+      </div>
+      <div class="ingredient-list" id="list-low"><span class="empty-hint">なし</span></div>
+    </div>
+    <div class="level-block">
+      <div class="level-header">
+        <div class="level-dot" style="background:#EF9F27;"></div>
+        <span class="level-title" style="color:#854F0B;">ふつう</span>
+        <span class="level-sub">普通にある食材</span>
+        <span class="level-count" id="cnt-mid"></span>
+      </div>
+      <div class="ingredient-list" id="list-mid"><span class="empty-hint">なし</span></div>
+    </div>
+    <div class="level-block">
+      <div class="level-header">
+        <div class="level-dot" style="background:#1D9E75;"></div>
+        <span class="level-title" style="color:#085041;">たっぷり</span>
+        <span class="level-sub">たくさんある食材</span>
+        <span class="level-count" id="cnt-high"></span>
+      </div>
+      <div class="ingredient-list" id="list-high"><span class="empty-hint">なし</span></div>
+    </div>
+    <p class="hint">「優先して使う」をONにした食材をAIが最優先でメニューに組み込みます</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="card-title-dot"></span>絞り込み条件</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:7px;">気分・テイスト</div>
+      <div class="filter-row">
+        <button class="pill active" data-mood="おまかせ" onclick="toggleMood(this)">おまかせ</button>
+        <button class="pill" data-mood="さっぱり" onclick="toggleMood(this)">さっぱり</button>
+        <button class="pill" data-mood="あっさり" onclick="toggleMood(this)">あっさり</button>
+        <button class="pill" data-mood="がっつり" onclick="toggleMood(this)">がっつり</button>
+        <button class="pill" data-mood="こってり" onclick="toggleMood(this)">こってり</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:7px;">ジャンル（複数選択可）</div>
+      <div class="filter-row">
+        <button class="pill pill-wa" data-c="和食" onclick="toggleCuisine(this)">和食</button>
+        <button class="pill pill-yo" data-c="洋食" onclick="toggleCuisine(this)">洋食</button>
+        <button class="pill pill-ch" data-c="中華" onclick="toggleCuisine(this)">中華</button>
+      </div>
+    </div>
+
+    <button class="gen-btn" onclick="generate()">AIにメニューを提案してもらう →</button>
+    <button class="gen-btn" style="margin-top:8px;background:var(--surface);color:var(--text);border:1px solid var(--border2);" onclick="copyPrompt()">プロンプトをコピーしてChatGPTで使う</button>
+  </div>
+
+  <div id="sug-area"></div>
+</div>
+
+<!-- お気に入り -->
+<div class="section" id="section-favorites">
+  <div class="fav-item">
+    <div><div class="fav-name">鮭の塩焼き定食</div><div class="fav-tags"><span class="tag">和食</span><span class="tag">あっさり</span><span class="tag">15分</span><span class="tag">¥500</span></div></div>
+    <button class="btn" onclick="addToWeek('鮭の塩焼き定食')">献立に追加</button>
+  </div>
+  <div class="fav-item">
+    <div><div class="fav-name">チキン南蛮</div><div class="fav-tags"><span class="tag">和食</span><span class="tag">がっつり</span><span class="tag">30分</span><span class="tag">¥700</span></div></div>
+    <button class="btn" onclick="addToWeek('チキン南蛮')">献立に追加</button>
+  </div>
+  <div class="fav-item">
+    <div><div class="fav-name">豚キムチ炒め</div><div class="fav-tags"><span class="tag">中華</span><span class="tag">がっつり</span><span class="tag">10分</span><span class="tag">¥450</span></div></div>
+    <button class="btn" onclick="addToWeek('豚キムチ炒め')">献立に追加</button>
+  </div>
+  <div class="fav-item">
+    <div><div class="fav-name">ペペロンチーノ</div><div class="fav-tags"><span class="tag">洋食</span><span class="tag">さっぱり</span><span class="tag">20分</span><span class="tag">¥300</span></div></div>
+    <button class="btn" onclick="addToWeek('ペペロンチーノ')">献立に追加</button>
+  </div>
+</div>
+
+<!-- 栄養・予算 -->
+<div class="section" id="section-nutrition">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-lbl">今週の合計予算</div><div class="stat-val">¥7,200</div><div class="stat-sub">目標 ¥8,400（2人分）</div></div>
+    <div class="stat-card"><div class="stat-lbl">平均調理時間</div><div class="stat-val">22分</div><div class="stat-sub">目標 30分以内</div></div>
+    <div class="stat-card"><div class="stat-lbl">1食あたり単価</div><div class="stat-val">¥514</div><div class="stat-sub">1人あたり</div></div>
+    <div class="stat-card"><div class="stat-lbl">食材使い回し率</div><div class="stat-val">68%</div><div class="stat-sub">今週の食材</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="card-title-dot"></span>今週の栄養バランス（推定）</div>
+    <div class="nutr-row"><div class="nutr-top"><span style="color:var(--text2)">たんぱく質</span><span style="font-weight:700">82g / 100g</span></div><div class="bar-track"><div class="bar-fill" style="width:82%;background:#1D9E75;"></div></div></div>
+    <div class="nutr-row"><div class="nutr-top"><span style="color:var(--text2)">炭水化物</span><span style="font-weight:700">310g / 350g</span></div><div class="bar-track"><div class="bar-fill" style="width:89%;background:#378ADD;"></div></div></div>
+    <div class="nutr-row"><div class="nutr-top"><span style="color:var(--text2)">脂質</span><span style="font-weight:700">68g / 70g</span></div><div class="bar-track"><div class="bar-fill" style="width:97%;background:#EF9F27;"></div></div></div>
+    <div class="nutr-row"><div class="nutr-top"><span style="color:var(--text2)">野菜摂取量</span><span style="font-weight:700">240g / 350g</span></div><div class="bar-track"><div class="bar-fill" style="width:69%;background:#639922;"></div></div></div>
+  </div>
+</div>
+
+<!-- 買い物リスト -->
+<div class="section" id="section-shopping">
+  <div class="card">
+    <div class="card-title"><span class="card-title-dot"></span>今週の買い物リスト</div>
+    <div class="shop-cat">
+      <div class="shop-cat-lbl">肉・魚</div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s1"><label for="s1">鶏むね肉</label><span class="qty">400g</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s2"><label for="s2">豚バラ肉</label><span class="qty">250g</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s3" checked><label for="s3" style="text-decoration:line-through;color:var(--text3)">鮭（切り身）</label><span class="qty">2切れ</span></div>
+    </div>
+    <div class="shop-cat">
+      <div class="shop-cat-lbl">野菜</div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s4"><label for="s4">キャベツ</label><span class="qty">1/2個</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s5"><label for="s5">玉ねぎ</label><span class="qty">3個</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s6"><label for="s6">にんにく</label><span class="qty">1株</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s7" checked><label for="s7" style="text-decoration:line-through;color:var(--text3)">豆腐</label><span class="qty">1丁</span></div>
+    </div>
+    <div class="shop-cat">
+      <div class="shop-cat-lbl">その他</div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s8"><label for="s8">卵</label><span class="qty">1パック</span></div>
+      <div class="shop-item"><input type="checkbox" class="shop-chk" id="s9"><label for="s9">味噌</label><span class="qty">1袋</span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+let apiKey = localStorage.getItem('献立プランナー_gemini_apikey') || '';
+
+function updateApiStatus() {
+  const dot = document.getElementById('api-status-dot');
+  const txt = document.getElementById('api-status-text');
+  if (apiKey) {
+    dot.classList.add('connected');
+    txt.textContent = 'APIキー設定済み';
+  } else {
+    dot.classList.remove('connected');
+    txt.textContent = 'APIキー未設定';
+  }
+}
+
+function openApiModal() {
+  document.getElementById('api-overlay').classList.remove('hidden');
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('api-error').classList.remove('show');
+  const cancelBtn = document.getElementById('api-cancel-btn');
+  cancelBtn.style.display = apiKey ? 'block' : 'none';
+}
+
+function closeApiModal() {
+  document.getElementById('api-overlay').classList.add('hidden');
+}
+
+function toggleVis() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  const errEl = document.getElementById('api-error');
+  if (!val.startsWith('AIza') && val !== '') {
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+  apiKey = val;
+  localStorage.setItem('献立プランナー_gemini_apikey', val);
+  updateApiStatus();
+  closeApiModal();
+  toast(val ? 'APIキーを保存しました' : 'APIキーをクリアしました');
+}
+let fridgeItems = [];
+let selectedMood = 'おまかせ';
+let selectedCuisines = [];
+let selectedCell = null;
+const days = ['月','火','水','木','金','土','日'];
+const lvLabel = {high:'たっぷり', mid:'ふつう', low:'少し'};
+
+const recipeSites = [
+  { name: 'キッコーマン', color: '#c0392b', url: n => `https://www.kikkoman.co.jp/homecook/search/result.html?keyword=${encodeURIComponent(n)}` },
+  { name: '味の素', color: '#1a6bb5', url: n => `https://www.ajinomoto.co.jp/recipe/search/?keyword=${encodeURIComponent(n)}` },
+  { name: 'ヤマキ', color: '#2e7d32', url: n => `https://www.yamaki.co.jp/recipe/search/?q=${encodeURIComponent(n)}` },
+];
+
+function sw(name) {
+  const tabs = ['plan','suggest','favorites','nutrition','shopping'];
+  document.querySelectorAll('.tab-btn').forEach((t,i) => t.classList.toggle('active', tabs[i]===name));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function renderFridge() {
+  ['low','mid','high'].forEach(lv => {
+    const items = fridgeItems.filter(f => f.level === lv);
+    const listEl = document.getElementById('list-'+lv);
+    const cntEl = document.getElementById('cnt-'+lv);
+    cntEl.textContent = items.length ? items.length+'品' : '';
+    if (!items.length) { listEl.innerHTML = '<span class="empty-hint">なし</span>'; return; }
+    const order = ['low','mid','high'];
+    listEl.innerHTML = items.map(f => {
+      const idx = fridgeItems.indexOf(f);
+      const nextLv = order[(order.indexOf(lv)+1)%3];
+      return `<div class="ingredient-row${f.priority?' prio-on':''}">
+        <span class="ingredient-name">${f.name}</span>
+        <button class="prio-btn${f.priority?' on':''}" onclick="togglePrio(${idx})">
+          <span class="prio-dot"></span>${f.priority?'優先 ON':'優先して使う'}
+        </button>
+        <button class="move-btn" onclick="moveLv(${idx})">${lvLabel[nextLv]}へ</button>
+        <button class="del-btn" onclick="delFridge(${idx})">×</button>
+      </div>`;
+    }).join('');
+  });
+}
+
+function addFridge() {
+  const inp = document.getElementById('fridge-input');
+  const lv = document.getElementById('qty-sel').value;
+  const v = inp.value.trim();
+  if (!v) return;
+  if (!fridgeItems.find(f => f.name === v)) {
+    fridgeItems.push({name:v, level:lv, priority:false});
+    renderFridge();
+updateApiStatus();
+    toast(`「${v}」を${lvLabel[lv]}で追加しました`);
+  } else {
+    toast(`「${v}」はすでに登録済みです`);
+  }
+  inp.value = ''; inp.focus();
+}
+
+function delFridge(i) {
+  const name = fridgeItems[i].name;
+  fridgeItems.splice(i,1);
+  renderFridge();
+  toast(`「${name}」を削除しました`);
+}
+
+function togglePrio(i) {
+  fridgeItems[i].priority = !fridgeItems[i].priority;
+  renderFridge();
+  toast(`「${fridgeItems[i].name}」の優先を${fridgeItems[i].priority?'ON':'OFF'}にしました`);
+}
+
+function moveLv(i) {
+  const order = ['low','mid','high'];
+  fridgeItems[i].level = order[(order.indexOf(fridgeItems[i].level)+1)%3];
+  renderFridge();
+  toast(`「${fridgeItems[i].name}」→ ${lvLabel[fridgeItems[i].level]}`);
+}
+
+function toggleMood(btn) {
+  document.querySelectorAll('.pill[data-mood]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedMood = btn.dataset.mood;
+}
+
+function toggleCuisine(btn) {
+  const c = btn.dataset.c;
+  if (btn.classList.contains('active')) { btn.classList.remove('active'); selectedCuisines = selectedCuisines.filter(x=>x!==c); }
+  else { btn.classList.add('active'); selectedCuisines.push(c); }
+}
+
+function sel(el, type, idx) {
+  document.querySelectorAll('.meal-cell').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedCell = {el, type, idx};
+  toast(`${days[idx]}曜・${type==='l'?'昼':'夜'}を選択 → AI提案で追加`);
+}
+
+async function generate() {
+  const area = document.getElementById('sug-area');
+  const cuisineStr = selectedCuisines.length > 0 ? selectedCuisines.join('・') : '和食・洋食・中華すべてOK';
+  const prioItems = fridgeItems.filter(f=>f.priority).map(f=>f.name);
+  const otherItems = fridgeItems.filter(f=>!f.priority).map(f=>`${f.name}(${lvLabel[f.level]})`);
+  const fridgeDesc = [
+    prioItems.length ? `【優先使用】${prioItems.join('、')}` : '',
+    otherItems.length ? `【その他冷蔵庫食材】${otherItems.join('、')}` : '',
+  ].filter(Boolean).join('\n') || '特になし';
+
+  area.innerHTML = `<div class="loading"><div class="dots"><span></span><span></span><span></span></div><div style="margin-top:10px;font-size:13px;">AIがメニューを考えています...</div></div>`;
+
+  try {
+    const prompt = `2人分のメニューを4つ提案してください。
+条件：調理時間 ${time}、1食予算 ${budget}円、テイスト ${selectedMood}、ジャンル ${cuisineStr}
+冷蔵庫の食材：\n${fridgeDesc}
+重要：【優先使用】の食材を必ず使うメニューを優先してください。
+
+JSON配列のみ返してください（説明文不要）:
+[{"name":"料理名","cuisine":"和食 or 洋食 or 中華","mood":"さっぱり or あっさり or がっつり or こってり","time":"調理時間","cost":"費用目安","usedPriority":["優先食材"],"usedOther":["その他使う冷蔵庫食材"],"extraNeeded":["追加で必要な食材"],"desc":"一言説明"}]`;
+
+    const res = await fetch(`${GEMINI_API_BASE}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [{text: prompt}]}],
+        generationConfig: {temperature: 0.7, maxOutputTokens: 1200}
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.candidates[0].content.parts[0].text;
+    const meals = JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    const ctagClass = {'和食':'stag-wa','洋食':'stag-yo','中華':'stag-ch'};
+
+    area.innerHTML = `<div class="sug-list">${meals.map(m => {
+      const recipeLinks = recipeSites.map(s =>
+        `<a class="recipe-link" href="${s.url(m.name)}" target="_blank" rel="noopener">
+          <span class="site-dot" style="background:${s.color};"></span>${s.name}
+        </a>`
+      ).join('');
+      return `<div class="sug-card">
+        <div class="sug-top">
+          <div>
+            <div class="sug-name">${m.name}</div>
+            <div class="sug-meta">⏱ ${m.time} &nbsp;·&nbsp; ¥${m.cost} &nbsp;·&nbsp; ${m.desc}</div>
+          </div>
+        </div>
+        <div class="sug-tags">
+          <span class="stag ${ctagClass[m.cuisine]||'stag-wa'}">${m.cuisine}</span>
+          <span class="stag stag-mood">${m.mood}</span>
+          ${(m.usedPriority||[]).map(f=>`<span class="stag stag-prio">★ ${f}</span>`).join('')}
+          ${(m.usedOther||[]).map(f=>`<span class="stag stag-have">✓ ${f}</span>`).join('')}
+          ${(m.extraNeeded||[]).map(e=>`<span class="stag stag-need">+ ${e}</span>`).join('')}
+        </div>
+        <div class="sug-actions">
+          ${recipeLinks}
+          <button class="add-to-plan-btn" onclick="addToWeek('${m.name.replace(/'/g,"&#39;")}')">献立に追加</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  } catch(e) {
+    area.innerHTML = `<div style="padding:1rem;font-size:13px;color:var(--text2);">提案の取得に失敗しました。エラー：${e.message}</div>`;
+  }
+}
+
+function buildPrompt() {
+  const cuisineStr = selectedCuisines.length > 0 ? selectedCuisines.join('・') : '和食・洋食・中華すべてOK';
+  const prioItems = fridgeItems.filter(f=>f.priority).map(f=>f.name);
+  const otherItems = fridgeItems.filter(f=>!f.priority).map(f=>`${f.name}(${lvLabel[f.level]})`);
+  const fridgeDesc = [
+    prioItems.length ? `【優先使用】${prioItems.join('、')}` : '',
+    otherItems.length ? `【その他冷蔵庫食材】${otherItems.join('、')}` : '',
+  ].filter(Boolean).join('\n') || '特になし';
+
+  return `2人分の夕食・昼食メニューを4つ提案してください。
+
+条件：
+- テイスト：${selectedMood}
+- ジャンル：${cuisineStr}
+- 冷蔵庫の食材：
+${fridgeDesc}
+
+【優先使用】の食材を必ず使うメニューを優先してください。
+
+各メニューについて以下の形式で教えてください：
+1. 料理名
+2. ジャンル（和食／洋食／中華）
+3. テイスト（さっぱり／あっさり／がっつり／こってり）
+4. 使う冷蔵庫の食材
+5. 追加で必要な食材
+6. 一言説明`;
+}
+
+function copyPrompt() {
+  const prompt = buildPrompt();
+  navigator.clipboard.writeText(prompt).then(() => {
+    toast('プロンプトをコピーしました！ChatGPTに貼り付けてください');
+  }).catch(() => {
+    // clipboard APIが使えない場合はテキストエリアで表示
+    document.getElementById('sug-area').innerHTML = `
+      <div class="card" style="margin-top:0;">
+        <div class="card-title"><span class="card-title-dot"></span>ChatGPTに貼り付けるプロンプト</div>
+        <textarea style="width:100%;height:220px;font-size:12px;padding:10px;border:1px solid var(--border2);border-radius:var(--radius);font-family:monospace;background:var(--surface2);color:var(--text);resize:none;">${prompt}</textarea>
+        <p style="font-size:11px;color:var(--text3);margin-top:8px;">上のテキストを全選択してコピー → <a href="https://chatgpt.com/" target="_blank" style="color:var(--teal);">ChatGPT</a> に貼り付けてください</p>
+      </div>`;
+  });
+}
+
+function addToWeek(name) {
+  if (!selectedCell) {
+    const empties = document.querySelectorAll('.meal-cell.empty');
+    if (empties.length > 0) { empties[0].textContent = name; empties[0].classList.remove('empty'); toast(`「${name}」を献立に追加しました`); }
+    else toast('献立表でセルを選んでから追加してください');
+    return;
+  }
+  selectedCell.el.textContent = name;
+  selectedCell.el.classList.remove('empty','selected');
+  selectedCell = null;
+  toast(`「${name}」を献立に追加しました`);
+}
+
+renderFridge();
+</script>
+</body>
+</html>
